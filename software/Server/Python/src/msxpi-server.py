@@ -147,10 +147,10 @@ def SPI_MASTER_transfer_byte(byte_out):
 
         GPIO.output(SPI_SCLK, GPIO.HIGH)
         #time.sleep(SPI_SCLK_HIGH_TIME)
-        
+
         if GPIO.input(SPI_MOSI):
             byte_in |= bit
-    
+
         GPIO.output(SPI_SCLK, GPIO.LOW)
         #time.sleep(SPI_SCLK_LOW_TIME)
 
@@ -164,11 +164,12 @@ def piexchangebyte(byte_out=0):
     global SPI_MOSI
     global SPI_MISO
     global RPI_READY
-    
+
     rc = RC_SUCCESS
-    
+
     GPIO.output(RPI_READY, GPIO.HIGH)
     while(GPIO.input(SPI_CS)):
+        checkipcfile()
         pass
 
     byte_in = SPI_MASTER_transfer_byte(byte_out)
@@ -184,7 +185,7 @@ def piexchangebytewithtimeout(byte_out=0,twait=5):
     global SPI_MISO
     global RPI_READY
     rc = RC_SUCCESS
-    
+
     t0 = time.time()
     GPIO.output(RPI_READY, GPIO.HIGH)
     while((GPIO.input(SPI_CS)) and (time.time() - t0) < twait):
@@ -245,18 +246,18 @@ class MyHTMLParser(HTMLParser):
         self.HTMLDATA = []
     def convert_charrefs(self, data):
         print("MyHTMLParser: convert_charrefs found :", data)
-                
+
 def pathExpander(path, basepath = ''):
     path=path.strip().rstrip(' \t\n\0')
-    
+
     if path.strip() == "..":
         path = basepath.rsplit('/', 1)[0]
         basepath = ''
-        
+
     if len(path) == 0 or path == '' or path.strip() == "." or path.strip() == "*":
         path = basepath
         basepath = ''
-        
+
     if path.startswith('/'):
         urltype = 0 # this is an absolute local path
         newpath = path
@@ -282,21 +283,21 @@ def pathExpander(path, basepath = ''):
     else:
         urltype = 1 # this is a network path
         newpath = basepath + "/" + path
-        
+
     return [urltype, newpath]
 
 def msxdos_inihrd(filename, access=mmap.ACCESS_WRITE):
-    
+
     if ('disk' in vars() or 'disk' in globals()):
         disk.flush()
-        
+
     size = os.path.getsize(filename)
     if (size>0):
         fd = os.open(filename, os.O_RDWR)
         disk = mmap.mmap(fd, size, access=access)
         rc = RC_SUCCESS
     else:
-        
+
         disk = ''
         rc = RC_FAILED
 
@@ -312,7 +313,7 @@ def dos83format(fname):
     name = str(finfo[0]).ljust(8)
     if len(finfo) == 2:
         ext = str(finfo[1]).ljust(3)
-    
+
     return name+ext
 
 def ini_fcb(fname,fsize):
@@ -329,18 +330,18 @@ def ini_fcb(fname,fsize):
 
     #convert filename to 8.3 format using all 11 positions required for the FCB
     msxfcbfname = dos83format(msxfile)
-    
+
     #print("Drive, Filename, N# blocks:",msxdrive,msxfcbfname,numblocks)
 
     # send FCB structure to MSX
     buf = bytearray()
     buf.extend(msxdrive.to_bytes(1,'little'))
     buf.extend(msxfcbfname.encode())
-    
+
     rc = sendmultiblock(buf, BLKSIZE, RC_SUCCESS)
-    
+
     #print("ini_fcb: Exiting")
-    
+
     return rc
 
 def prun(cmd = ''):
@@ -348,12 +349,12 @@ def prun(cmd = ''):
     rc = RC_SUCCESS
     if (cmd.strip() == '' or len(cmd.strip()) == 0):
         rc,data = recvdata(BLKSIZE)
-        
+
         if data[0] == 0:
             cmd=''
         else:
             cmd = data.decode().split("\x00")[0]
-    
+
     if (cmd.strip() == '' or len(cmd.strip()) == 0):
         rc = RC_FAILED
         sendmultiblock("Syntax: prun <command> <::> command. To  pipe a command to other, use :: instead of |".encode(),BLKSIZE,rc)
@@ -410,17 +411,17 @@ def pdir():
     return rc
 
 def pcd():
-    
+
     print("pcd")
     rc = RC_SUCCESS
     basepath = getMSXPiVar('PATH')
     rc,data = recvdata()
-    
+
     if data[0] == 0:
         userPath=''
     else:
         userPath = data.decode().split("\x00")[0]
-        
+
     try:
         if (len(userPath) == 0 or userPath == '' or userPath.strip() == "."):
             rc = sendmultiblock(basepath.encode(), BLKSIZE, RC_SUCCESS)
@@ -449,7 +450,7 @@ def pcd():
 
 def ploadr():
     pcopy("ploadr")
-    
+
 def pcopy(msxcmd = "pcopy"):
 
     buf = bytearray(BLKSIZE)
@@ -457,22 +458,22 @@ def pcopy(msxcmd = "pcopy"):
 
     global psetvar,GLOBALRETRIES
     basepath = getMSXPiVar('PATH')
-    
+
     # Receive parameters -
     rc,data = recvdata(BLKSIZE)
-    
+
     if data[0] == 0:
         userPath=''
     else:
         userPath = data.decode().split("\x00")[0]
-    
+
     if len(userPath) == 0 or (userPath.lower().strip() == '/help'):
         buf = 'Syntax:\n'
         if msxcmd == "pcopy":
             buf = buf + 'pcopy </z> remotefile <localfile>\n'
         elif msxcmd == "ploadr":
             buf = buf + 'ploadr </z> remotefile\n'
-        
+
         buf = buf +'Valid devices:\n'
         buf = buf +'/, path, http, ftp, nfs, smb, m:, r1:, r2:\n'
         buf = buf + '/z decompress file\n'
@@ -494,7 +495,7 @@ def pcopy(msxcmd = "pcopy"):
         if len(parms) > 1:
             pathType, path = pathExpander(parms[0], basepath)
             fname2 = parms[1]
-  
+
         else:
             pathType, path = pathExpander(parms[0], basepath)
             if "/" in path:
@@ -546,27 +547,27 @@ def pcopy(msxcmd = "pcopy"):
                 rc = p.poll()
                 if rc!=0:
                     rc = RC_FAILED
-            
+
             if rc == 0:
                 fname1 = os.listdir('/tmp/msxpi')[0]
                 expandedFn = fname1
                 fname1 = '/tmp/msxpi/' + fname1
-                
+
                 try:
                     with open(fname1, mode='rb') as f:
                         buf = f.read()
 
                     filesize = len(buf)
                     rc = RC_SUCCESS
-                    
+
                 except Exception as e:
                     rc = sendmultiblock(('Pi:Error - ' + str(e)).encode(), BLKSIZE, RC_FAILED)
                     return RC_FAILED
-       
+
             else:
                 rc = sendmultiblock(('Pi:Error - ' + perror).encode(), BLKSIZE, RC_FAILED)
                 return RC_FAILED
-    
+
     # If all good so far (including eventual decompress if needed)
     # then send the file to MSX
     if rc == RC_SUCCESS:
@@ -587,10 +588,10 @@ def pcopy(msxcmd = "pcopy"):
                 if rc != RC_SUCCESS:
                     print("pcopy: ini_fcb failed")
                     return rc
-                
+
                 # This will send the file to MSX, for pcopy to write it to disk
                 rc = sendmultiblock(buf,SECTORSIZE, rc)
-            
+
             else:# Booted from MSXPi disk drive (disk images)
                 # this routine will write the file directly to the disk image in RPi
                 try:
@@ -626,7 +627,7 @@ def pcopy(msxcmd = "pcopy"):
                     sendmultiblock("Pi:Ok".encode(), BLKSIZE, RC_TERMINATE)
                 except Exception as e:
                     rc = sendmultiblock(('Pi:Error - ' + str(e)).encode(), BLKSIZE, RC_FAILED)
-            
+
     #print(hex(rc))
     return rc
 
@@ -637,15 +638,15 @@ def ploadr():
 
     global psetvar,GLOBALRETRIES
     basepath = getMSXPiVar('PATH')
-    
+
     # Receive parameters -
     rc,data = recvdata(BLKSIZE)
-    
+
     if data[0] == 0:
         userPath=''
     else:
         userPath = data.decode().split("\x00")[0]
-                   
+
     if len(userPath) == 0 or userPath.lower().startswith('/h'):
         buf = 'Syntax:\n'
         buf = buf + 'ploadr </z> remotefile\n'
@@ -708,7 +709,7 @@ def ploadr():
                 rc = p.poll()
                 if rc!=0:
                     rc = RC_FAILED
-            
+
             if rc == 0:
                 fname1 = os.listdir('/tmp/msxpi')[0]
                 expandedFn = fname1
@@ -720,15 +721,15 @@ def ploadr():
 
                     filesize = len(buf)
                     rc = RC_SUCCESS
-                    
+
                 except Exception as e:
                     rc = sendmultiblock(('Pi:Error - ' + str(e)).encode(), BLKSIZE, RC_FAILED)
                     return RC_FAILED
-       
+
             else:
                 rc = sendmultiblock(('Pi:Error - ' + perror).encode(), BLKSIZE, RC_FAILED)
                 return RC_FAILED
-                
+
     if rc == RC_SUCCESS:
         if filesize == 0:
             rc = sendmultiblock("Pi:Error - File size is zero bytes".encode(), BLKSIZE, RC_FAILED)
@@ -737,7 +738,7 @@ def ploadr():
         else:
             # Send the file to MSX
             rc = sendmultiblock(buf,SECTORSIZE, rc)
-    
+
     print(hex(rc))
     return rc
 
@@ -748,7 +749,7 @@ def formatrsp(rc,lsb,msb,msg,size=BLKSIZE):
     b[2] = msb
     b[3:len(msg)] = bytearray(msg.encode())
     return b
-    
+
 def pdate():
 
     print("pdate")
@@ -762,12 +763,12 @@ def pdate():
     pdate[5]=(now.minute)
     pdate[6]=(now.second)
     pdate[7]=(0)
-    
+
     sendmultiblock(pdate, CMDSIZE, RC_SUCCESS)
-   
+
     return RC_SUCCESS
-    
-    # old code - never executed 
+
+    # old code - never executed
     now = datetime.datetime.now()
     piexchangebyte(now.year & 0xff)
     piexchangebyte(now.year >>8)
@@ -781,9 +782,9 @@ def pdate():
 
 def pplay():
     rc = RC_SUCCESS
-    
+
     rc,data = recvdata(BLKSIZE)
-        
+
     if data[0] == 0:
         buf = "Syntax:\npplay play|loop|pause|resume|stop|getids|getlids|list <filename|processid|directory|playlist|radio>\nExemple: pplay play music.mp3"
         sendmultiblock(buf.encode(), BLKSIZE, RC_SUCCESS)
@@ -796,9 +797,9 @@ def pplay():
             parms = msxparms.split(" ")[1].split("\x00")[0]
         else:
             parms = ''
-    
+
     #print("cmd / parms:",cmd,parms)
-    
+
     buf = ''
     try:
         buf = subprocess.check_output(['/home/pi/msxpi/pplay.sh',getMSXPiVar('PATH'),cmd,parms])
@@ -810,19 +811,19 @@ def pplay():
 
     #print (hex(rc))
     return rc
-    
+
 def pvol():
     rc = RC_SUCCESS
-    
+
     rc,data = recvdata(BLKSIZE)
 
     if data[0] == 0:
         vol=''
     else:
         vol = data.decode().split("\x00")[0]
-        
+
     rc = prun("mixer set PCM -- "+vol)
-    
+
     print (hex(rc))
     return rc
 
@@ -830,7 +831,7 @@ def pset(varn = '', varv = ''):
     global psetvar,drive0Data,drive1Data
 
     if varn == '':
-        
+
         rc,data = recvdata(BLKSIZE)
         buf = ''
         if data[0] == 0:
@@ -852,7 +853,7 @@ def pset(varn = '', varv = ''):
         varvalue = varv
 
     rc = setMSXPiVar(varname, varvalue)
-    
+
     if rc == RC_SUCCESS:
         if varname.upper() == 'DRIVEA':
             rc,drive0Data = msxdos_inihrd(varvalue)
@@ -860,7 +861,7 @@ def pset(varn = '', varv = ''):
         elif varname.upper() == 'DRIVEB':
             rc,drive1Data = msxdos_inihrd(varvalue)
             updateIniFile(MSXPIHOME+'/msxpi.ini',psetvar)
-        
+
         if varn == '':
             rc = sendmultiblock("Pi:Ok".encode(), BLKSIZE, RC_SUCCESS)
         return rc
@@ -869,9 +870,9 @@ def pset(varn = '', varv = ''):
             sendmultiblock("Pi:Error".encode(), BLKSIZE, RC_FAILED)
 
 def setMSXPiVar(pvar = '', pvalue = ''):
-    
+
     global psetvar
-    
+
     index = 0
     for index in range(0,len(psetvar)):
         if (psetvar[index][0].upper() == pvar.upper()):
@@ -885,7 +886,7 @@ def setMSXPiVar(pvar = '', pvalue = ''):
                 updateIniFile(MSXPIHOME+'/msxpi.ini',psetvar)
                 return RC_SUCCESS
         index += 1
-                
+
     # Did not find the Var - User is tryign to add a new one
     # Check if there is a slot, then add new variable
     for index in range(0,len(psetvar)):
@@ -907,7 +908,7 @@ def getMSXPiVar(devname = 'PATH'):
             break
         idx += 1
     return devval
-    
+
 def pwifi():
 
     global psetvar
@@ -948,7 +949,7 @@ def pwifi():
             prun("sudo ip link set wlan0 down && sleep 1 && sudo ip link set wlan0 up")
     else:
         prun("ip a | grep '^1\\|^2\\|^3\\|^4\\|inet'|grep -v inet6")
-    
+
     return RC_SUCCESS
 
 def pver():
@@ -956,7 +957,7 @@ def pver():
     ver = "MSXPi Server Version "+version+" Build "+ BuildId
     rc = sendmultiblock(ver.encode(), BLKSIZE, RC_SUCCESS)
     return rc
-    
+
 def irc():
 
     print("irc")
@@ -965,18 +966,18 @@ def irc():
     ircserver = getMSXPiVar('IRCADDR')
     ircport = int(getMSXPiVar('IRCPORT'))
     msxpinick =  getMSXPiVar('IRCNICK')
-    
+
     rc,data = recvdata()
     if rc != RC_SUCCESS:
         return rc
-        
+
     if data[0] == 0:
         cmd=''
     else:
         cmd = data.decode().split("\x00")[0].lower()
-    
+
     rc = RC_SUCCNOSTD
-    
+
     try:
         if cmd[:4] == 'conn':
             ircsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -1010,16 +1011,16 @@ def irc():
 
             ircmsg = 'Pi:Ok\n'
             rc = RC_SUCCNOSTD
-        
+
             ircsock.setblocking(0);
             sendmultiblock(ircmsg.encode(), BLKSIZE, rc)
 
         elif cmd[:4] == 'read':
-  
+
             print("irc:read")
-            
+
             ircmsg = 'Pi:Error'
-            
+
             try:
                 ircmsg = ircsock.recv(2048).decode()
                 if len(ircmsg)>1:
@@ -1052,9 +1053,9 @@ def irc():
                 print("irc read exception:",err,str(e))
                 ircmsg = 'Pi:Ok\n'
                 rc = RC_SUCCNOSTD
-    
+
             sendmultiblock(ircmsg.encode(), BLKSIZE, rc)
-            
+
         elif cmd[:5] == 'names':
             print("names:",cmd)
             ircsock.send((cmd+"\r\n").encode())
@@ -1096,11 +1097,11 @@ def py():
             sendmultiblock(("Pi:Error - "+str(e)).encode(), BLKSIZE, RC_FAILED)
     else:
         sendmultiblock('Pi:Error'.encode(), BLKSIZE, rc)
-        
+
 def dosinit():
-    
+
     global msxdos1boot
-        
+
     rc,data = recvdata(BLKSIZE)
     if rc == RC_SUCCESS:
         flag = data.decode().split("\x00")[0]
@@ -1108,15 +1109,15 @@ def dosinit():
             dskioini()
         else:
             msxdos1boot = False
-    
+
     #print (hex(rc))
     return rc
-    
+
 def dskioini():
     print("dskioini")
-    
+
     global msxdos1boot,sectorInfo,drive0Data,drive1Data
-    
+
     # Initialize disk system parameters
     msxdos1boot = True
     sectorInfo = [0,0,0,0]
@@ -1128,21 +1129,21 @@ def dskiords():
     print("dskiords")
 
     DOSSCTSZ = SECTORSIZE - 3
-    
+
     global msxdos1boot,sectorInfo,drive0Data,drive1Data
     if not msxdos1boot:
         dskioini()
-        
+
     initdataindex = sectorInfo[3]*DOSSCTSZ
     numsectors = sectorInfo[1]
     sectorcnt = 0
-    
+
     #print("dskiords:deviceNumber=",sectorInfo[0])
     #print("dskiords:numsectors=",sectorInfo[1])
     #print("dskiords:mediaDescriptor=",sectorInfo[2])
     #print("dskiords:initialSector=",sectorInfo[3])
     #print("dskiords:blocksize=",DOSSCTSZ)
-    
+
     while sectorcnt < numsectors:
         #print("dskiords:",sectorcnt)
         if sectorInfo[0] == 0:
@@ -1151,33 +1152,33 @@ def dskiords():
             buf = drive1Data[initdataindex+(sectorcnt*DOSSCTSZ):initdataindex+DOSSCTSZ+(sectorcnt*DOSSCTSZ)]
         rc = senddata(buf,DOSSCTSZ)
         sectorcnt += 1
-        
+
         if  rc == RC_SUCCESS:
             pass
             #print("dskiords: checksum is a match")
         else:
             print("dskiords: checksum error")
             break
- 
+
 def dskiowrs():
     print("dskiowrs")
-    
+
     DOSSCTSZ = SECTORSIZE - 3
-    
+
     global msxdos1boot,sectorInfo,drive0Data,drive1Data
     if not msxdos1boot:
         dskioini()
-        
+
     initdataindex = sectorInfo[3]*DOSSCTSZ
     numsectors = sectorInfo[1]
     sectorcnt = 0
-    
+
     #print("dskiowrs:deviceNumber=",sectorInfo[0])
     #print("dskiowrs:numsectors=",sectorInfo[1])
     #print("dskiowrs:mediaDescriptor=",sectorInfo[2])
     #print("dskiowrs:initialSector=",sectorInfo[3])
     #print("dskiowrs:blocksize=",DOSSCTSZ)
-    
+
     while sectorcnt < numsectors:
         rc,buf = recvdata(DOSSCTSZ)
         if  rc == RC_SUCCESS:
@@ -1190,19 +1191,19 @@ def dskiowrs():
         else:
             print("dskiowrs: checksum error")
             break
-                  
+
 def dskiosct():
     print("dskiosct")
 
     DOSSCTSZ = SECTORSIZE - 3
-    
+
     global msxdos1boot,sectorInfo,drive0Data,drive1Data
     if not msxdos1boot:
         dskioini()
 
     route = 1
-    
-    if route == 1:             
+
+    if route == 1:
         rc,buf = recvdata(5)
         sectorInfo[0] = buf[0]
         sectorInfo[1] = buf[1]
@@ -1215,12 +1216,12 @@ def dskiosct():
         #    print("dskiosct: checksum is a match")
         else:
             print("dskiosct: checksum error")
-            
+
     else:
         # Syncronize with MSX
         while piexchangebyte() != READY:  # was 0x9F:
             pass
-            
+
         sectorInfo[0] = piexchangebyte()
         sectorInfo[1] = piexchangebyte()
         sectorInfo[2] = piexchangebyte()
@@ -1230,35 +1231,37 @@ def dskiosct():
         msxcrc = piexchangebyte()
 
         crc = 0xFF
-        crc = crc ^ (sectorInfo[0])        
+        crc = crc ^ (sectorInfo[0])
         crc = crc ^ (sectorInfo[1])
         crc = crc ^ (sectorInfo[2])
-        crc = crc ^ (byte_lsb)        
-        crc = crc ^ (byte_msb)    
+        crc = crc ^ (byte_lsb)
+        crc = crc ^ (byte_msb)
         piexchangebyte(crc)
-      
+
         if crc != msxcrc:
             print("dos_sct: crc error")
-          
+
     #print("dskiosct:deviceNumber=",sectorInfo[0])
     #print("dskiosct:numsectors=",sectorInfo[1])
     #print("dskiosct:mediaDescriptor=",sectorInfo[2])
     #print("dskiosct:initialSector=",sectorInfo[3])
-       
+
 def recvdata( bytecounter = BLKSIZE):
 
     print("recvdata")
 
     th = threading.Timer(3.0, exitDueToSyncError)
-            
+
     retries = GLOBALRETRIES
+
     while retries > 0:
+
         retries -= 1
-        
+
         # Syncronize with MSX
         while piexchangebyte() != READY: # WAS 0x9F:
             pass
-            
+
         data = bytearray()
         chksum = 0
         while(bytecounter > 0 ):
@@ -1269,44 +1272,44 @@ def recvdata( bytecounter = BLKSIZE):
 
         # Receive the CRC
         msxsum = piexchangebyte()
-        
+
         # Send local CRC - only 8 right bits
         thissum_r = (chksum % 256)              # right 8 bits
         thissum_l = (chksum >> 8)                 # left 8 bits
         thissum = ((thissum_l + thissum_r) % 256)
         piexchangebyte(thissum)
-        
+
         if (thissum == msxsum):
             rc = RC_SUCCESS
-            #print("recvdata: checksum is a match")
+            print("recvdata: checksum is a match")
             th.cancel()
             break
         else:
             rc = RC_TXERROR
             print("recvdata: checksum error")
             th.start()
-        
+
     #print (hex(rc))
     return rc,data
 
 def senddata(data, blocksize = BLKSIZE):
-    
+
     print("senddata")
 
     th = threading.Timer(3.0, exitDueToSyncError)
     th.start()
-            
+
     retries = GLOBALRETRIES
     while retries > 0:
         retries -= 1
-        
+
         # Syncronize with MSX
         while piexchangebyte() != READY: # WAS 0x9F:
             pass
-            
+
         byteidx = 0
         chksum = 0
-    
+
         while(byteidx < blocksize):
             #if (byteidx == 0) or (byteidx > 499):
             #    print(byteidx)
@@ -1319,16 +1322,16 @@ def senddata(data, blocksize = BLKSIZE):
             chksum += pibyte
             piexchangebyte(pibyte)
             byteidx += 1
-        
+
         # Send local CRC - only 8 right bits
         thissum_r = (chksum % 256)              # right 8 bits
         thissum_l = (chksum >> 8)                 # left 8 bits
         thissum = ((thissum_l + thissum_r) % 256)
         piexchangebyte(thissum)
-    
+
         # Receive the CRC
         msxsum = piexchangebyte()
-            
+
         if (thissum == msxsum):
             rc = RC_SUCCESS
             #print("senddata: checksum is a match")
@@ -1337,7 +1340,7 @@ def senddata(data, blocksize = BLKSIZE):
         else:
             rc = RC_TXERROR
             print("senddata: checksum error")
-    
+
     #print (hex(rc))
     return rc
 
@@ -1346,7 +1349,7 @@ def sendmultiblock(buf, blocksize = BLKSIZE, rc = RC_SUCCESS):
     print("sendmultiblock")
 
     numblocks = math.ceil(len(buf)/(blocksize - 3))
-    
+
     # If buffer small or equal to BLKSIZE
     if numblocks == 1:  # Only one block to transfer
         data = bytearray(blocksize)
@@ -1374,21 +1377,21 @@ def sendmultiblock(buf, blocksize = BLKSIZE, rc = RC_SUCCESS):
             senddata(data,blocksize)
             idx += (blocksize - 3)
             thisblk += 1
-                        
+
     return rc
-    
+
 def prestart():
     print("Restarting MSXPi Server")
     exitDueToSyncError()
-    
+
 def preboot():
     print("Rebooting Raspberry Pi")
     os.system("sudo reboot")
-    
+
 def pshut():
     print("Shutting down Raspberry Pi")
     os.system("sudo shutdown -h now")
-    
+
 def exitDueToSyncError():
     print("Sync error. Recycling MSXPi-Server")
     os.system("/home/pi/msxpi/kill.sh")
@@ -1401,31 +1404,31 @@ def updateIniFile(fname,memvar):
 
 def apitest():
     print("apitest")
-    
+
     # Parameters have always a fixed size: BLKSIZE
     rc,data = recvdata(BLKSIZE)
     #print("Parameters in CALL MSXPI:",data)
-    
+
     #print("Extracting only ascii bytes and setting reponse...")
     buf1 = data.decode().split("\x00")[0]
 
     # Send response to CALL MSXPI - It will always expect a response
     rc = sendmultiblock(('Pi:CALL MSXPI parameters:' + buf1).encode(), BLKSIZE, RC_SUCCESS)
-        
+
     # Now Receive additional data sent with CALL MSXPISEND
     rc,data = recvdata(BLKSIZE)
     #print("Additional data sent by CALL MSXPISEND:",data)
-    
+
     #print("Extracting only ascii bytes and setting reponse...")
     buf2 = data.decode().split("\x00")[0]
 
     #print("Sending response: ",buf2)
     rc = sendmultiblock(('Pi:CALL MSXPISEND data:' + buf2).encode(), BLKSIZE, RC_SUCCESS)
-    
+
 def chatgpt():
     #print('chatgpt')
     model_engine = "gpt-3.5-turbo"
-    
+
     rc,data = recvdata(BLKSIZE)
     query = data.decode().split("\x00")[0]
 
@@ -1433,9 +1436,9 @@ def chatgpt():
         print("chatagpt: no key - exiting")
         sendmultiblock('Pi:Error - OPENAIKEY is not defined. Define your key with PSET'.encode(), BLKSIZE, RC_FAILED)
         return RC_SUCCESS
-        
+
     api_key = getMSXPiVar('OPENAIKEY')
-    
+
     if rc == RC_SUCCESS:
         try:
             client = openai.OpenAI(api_key=api_key)
@@ -1450,14 +1453,36 @@ def chatgpt():
             )
 
             buf = completion.choices[0].message.content
-            
+
             sendmultiblock(buf.encode(), BLKSIZE, RC_SUCCESS)
         except Exception as e:
             print("Pi:Error - ",str(e).encode())
             sendmultiblock(("Pi:Error - "+str(e)).encode(), BLKSIZE, RC_FAILED)
     else:
         sendmultiblock('Pi:Error'.encode(), BLKSIZE, rc)
-        
+
+def checkipcfile():
+    ipcfile.seek(0)
+    line = ipcfile.readline().rstrip('\n')
+    if line:
+        ipcfile.truncate(0)
+        if line[0:5] == "DRIVE":
+            varn = line[0:6]
+            varv = line[7:]
+            print("Change "+varn+" to "+varv)
+            pset(varn, varv)
+            return
+        if line[0:7] == "RESTART":
+            prestart()
+            return
+        if line[0:6] == "REBOOT":
+            preboot()
+            return
+        if line[0:8] == "SHUTDOWN":
+            pshut()
+            return
+
+
 """ ============================================================================
     msxpi-server.py
     main program starts here
@@ -1472,7 +1497,7 @@ if exists(MSXPIHOME+'/msxpi.ini'):
         line = f.readline()
         if not line:
             break
-    
+
         if line.startswith('var'):
             var = line.split(' ')[1].split('=')[0].strip()
             value = line.replace('var ','',1).replace(var,'',1).split('=')[1].strip()
@@ -1486,6 +1511,8 @@ if exists(MSXPIHOME+'/msxpi.ini'):
         psetvar.append(["SPI_MOSI","16"])
         psetvar.append(["SPI_MISO","12"])
         psetvar.append(["RPI_READY","25"])
+    if 'IPC_FILE' not in str(psetvar):
+        psetvar.append(["IPC_FILE", "/tmp/msxpi_ipc"])
     if 'free' not in str(psetvar):
         psetvar.append(["free","free"])
 
@@ -1534,6 +1561,10 @@ init_spi_bitbang()
 GPIO.output(RPI_READY, GPIO.LOW)
 print("GPIO Initialized\n")
 
+ipcfilepath = getMSXPiVar("IPC_FILE")
+ipcfile = open(ipcfilepath,'w+')
+print("Opened IPC file")
+
 print("Starting MSXPi Server Version ",version,"Build",BuildId)
 
 try:
@@ -1541,6 +1572,7 @@ try:
         try:
             print("st_recvcmd: waiting command")
             rc,buf = recvdata(CMDSIZE)
+
 
             if (rc == RC_SUCCESS):
                 if buf[0] == 0:
@@ -1552,7 +1584,7 @@ try:
                 parms = fullcmd[len(cmd)+1:]
                 # Executes the command (first word in the string)
                 # And passes the whole string (including command name) to the function
-                # globals()['use_variable_as_function_name']() 
+                # globals()['use_variable_as_function_name']()
                 globals()[cmd.strip()]()
         except Exception as e:
             errcount += 1
